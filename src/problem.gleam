@@ -6,11 +6,12 @@ import gleam/string
 pub type ContextStack =
   List(String)
 
-/// The error type in a result ie. `Result(t, Problem)`
+/// The error type in a result ie. `Result(t, Problem(e))`
 pub type Problem(err) {
   Problem(error: err, stack: ContextStack)
 }
 
+/// An alias for the `Result` type. Where the error type is `Problem`.
 pub type Outcome(t, err) =
   Result(t, Problem(err))
 
@@ -18,8 +19,52 @@ fn push_to_stack(stack: ContextStack, entry: String) -> List(String) {
   [entry, ..stack]
 }
 
-pub fn context(problem: Problem(err), value: String) -> Problem(err) {
+/// Add context to a Problem.
+/// This will add a context entry to the stack.
+///
+/// ## Example
+///
+/// ```gleam
+/// Error("Something went wrong")
+/// |> problem.outcome
+/// |> problem.context("In find user function")
+/// ```
+///
+pub fn context(
+  outcome outcome: Outcome(t, err),
+  context context: String,
+) -> Outcome(t, err) {
+  result.map_error(outcome, problem_context(_, context))
+}
+
+fn problem_context(problem: Problem(err), value: String) -> Problem(err) {
   Problem(..problem, stack: push_to_stack(problem.stack, value))
+}
+
+/// Convert `Result(a, e)` to `Result(a, Problem(e))`
+///
+/// ## Example
+///
+/// ```gleam
+/// Error("Something went wrong")
+/// |> problem.outcome
+/// ```
+pub fn outcome(result: Result(t, err)) -> Outcome(t, err) {
+  result.map_error(result, new_problem)
+}
+
+/// Create a `Problem`
+/// Use this if you need the `Problem` type only.
+/// Usually you will use `outcome` instead.
+///
+/// ## Example
+///
+/// ```gleam
+/// problem.new_problem("Something went wrong")
+/// ```
+///
+fn new_problem(error: err) -> Problem(err) {
+  Problem(error:, stack: [])
 }
 
 /// Map the error value
@@ -44,9 +89,9 @@ fn problem_map_error(
 /// ```gleam
 /// let outcome = Error("Fail") |> problem.outcome
 ///
-/// problem.to_result(outcome) == Error("Fail")
+/// problem.remove_problem(outcome) == Error("Fail")
 /// ```
-pub fn to_result(outcome: Outcome(t, err)) -> Result(t, err) {
+pub fn remove_problem(outcome: Outcome(t, err)) -> Result(t, err) {
   outcome |> result.map_error(fn(problem) { problem.error })
 }
 
@@ -60,15 +105,21 @@ pub fn to_result(outcome: Outcome(t, err)) -> Result(t, err) {
 /// ## Example
 ///
 /// ```gleam
-/// Error("Something went wrong")
-/// |> outcome.as_defect
-/// |> outcome.context("In find user function")
-/// |> outcome.context("More context")
-/// |> outcome.pretty_print(function.identity)
+/// let result = Error("Something went wrong")
+/// |> problem.outcome
+/// |> problem.context("In find user function")
+/// |> problem.context("More context")
+///
+/// case result {
+///   Error(problem) ->
+///     problem.pretty_print(function.identity)
+///
+///   Ok(_) -> todo
+/// }
 /// ```
 ///
 /// ```
-/// Defect: Something went wrong
+/// Something went wrong
 ///
 /// stack:
 ///  In find user function
@@ -83,14 +134,20 @@ pub fn pretty_print(problem: Problem(err), to_s: fn(err) -> String) -> String {
 /// ## Example
 ///
 /// ```gleam
-/// Error("Something went wrong")
-/// |> outcome.as_defect
-/// |> outcome.context("In find user function")
-/// |> outcome.print_line(function.identity)
+/// let result = Error("Something went wrong")
+/// |> problem.outcome
+/// |> problem.context("In find user function")
+///
+/// case result {
+///   Error(problem) ->
+///     problem.print_line(function.identity)
+///
+///   Ok(_) -> todo
+/// }
 /// ```
 ///
 /// ```
-/// Defect: Something went wrong < In find user function
+/// Something went wrong < In find user function
 /// ```
 pub fn print_line(problem: Problem(err), to_s: fn(err) -> String) -> String {
   pretty_print_with_joins(problem, " < ", " < ", to_s)
@@ -118,7 +175,7 @@ fn pretty_print_with_joins(
   current <> stack
 }
 
-pub fn stack_to_lines(stack: ContextStack) -> List(String) {
+fn stack_to_lines(stack: ContextStack) -> List(String) {
   stack
   |> list.reverse
 }
