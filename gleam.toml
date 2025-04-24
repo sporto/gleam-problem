@@ -1,5 +1,5 @@
 name = "problem"
-version = "1.0.0"
+version = "1.1.0"
 
 description = "Error handling for Gleam applications"
 licences = ["MIT"]
