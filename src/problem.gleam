@@ -63,7 +63,7 @@ pub fn outcome(result: Result(t, err)) -> Outcome(t, err) {
 /// problem.new_problem("Something went wrong")
 /// ```
 ///
-fn new_problem(error: err) -> Problem(err) {
+pub fn new_problem(error: err) -> Problem(err) {
   Problem(error:, stack: [])
 }
 
