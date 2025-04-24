@@ -2,7 +2,7 @@ default:
 	just --list
 
 changelog:
-	git cliff
+	git cliff --output CHANGELOG.md
 
 docs:
 	gleam docs build
